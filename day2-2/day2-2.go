@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"strings"
 	"sync"
@@ -304,8 +303,7 @@ func main() {
 	}
 
 	/*
-	 * Now that we know which boxes are correct, and the position
-	 * of the differing letter, build a string of letters that match
+	 * Now that we know which boxes are correct build a string of letters that match
 	 */
 	commonLetters := &strings.Builder{}
 
@@ -316,44 +314,4 @@ func main() {
 	}
 
 	fmt.Printf("Common letters: %s\n", commonLetters.String())
-}
-
-func mapOccurences(boxID string) map[string]int {
-	seen := make(map[string]int)
-	ok := false
-
-	scanner := bufio.NewScanner(strings.NewReader(boxID))
-	scanner.Split(bufio.ScanRunes)
-
-	for scanner.Scan() {
-		ch := scanner.Text()
-
-		if _, ok = seen[ch]; !ok {
-			seen[ch] = 1
-		} else {
-			seen[ch]++
-		}
-	}
-
-	return seen
-}
-
-func hasTwoOccurences(m map[string]int) bool {
-	for _, count := range m {
-		if count == 2 {
-			return true
-		}
-	}
-
-	return false
-}
-
-func hasThreeOccurences(m map[string]int) bool {
-	for _, count := range m {
-		if count > 2 {
-			return true
-		}
-	}
-
-	return false
 }

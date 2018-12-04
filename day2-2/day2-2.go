@@ -261,10 +261,8 @@ zihrtxagwmfpbsnodeydukjbqv`
 func main() {
 	boxIDs := strings.Split(input, "\n")
 	correctBoxes := make(chan string, 5)
-	differingCharPosition := 0
 
 	wait := &sync.WaitGroup{}
-	lock := &sync.Mutex{}
 
 	for index1 := 0; index1 < len(boxIDs)-2; index1++ {
 		for index2 := index1 + 1; index2 < len(boxIDs)-1; index2++ {
@@ -272,24 +270,16 @@ func main() {
 
 			go func(boxID1, boxID2 string) {
 				diffCount := 0
-				currentDifferingCharPos := 0
 
 				for pos := range boxID1 {
 					if boxID1[pos] == boxID2[pos] {
 						continue
 					}
 
-					currentDifferingCharPos = pos
 					diffCount++
 				}
 
-				//fmt.Printf("Diff count == %d\n", diffCount)
-
 				if diffCount == 1 {
-					lock.Lock()
-					differingCharPosition = currentDifferingCharPos
-					lock.Unlock()
-
 					correctBoxes <- boxID1
 					correctBoxes <- boxID2
 				}

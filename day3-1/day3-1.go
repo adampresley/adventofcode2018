@@ -3,10 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 var input = `#1 @ 45,64: 22x22
@@ -1336,50 +1334,20 @@ type Claim struct {
 
 type ClaimCollection []*Claim
 
-var claims ClaimCollection
-
 func main() {
-	claims = make(ClaimCollection, 0, 100)
-	parseInput()
-
-	sort.Slice(claims, func(a, b int) bool {
-		value1 := claims[a].Rect.Left + claims[a].Rect.Top
-		value2 := claims[b].Rect.Left + claims[b].Rect.Top
-
-		return value1 < value2
-	})
-
-	for _, claim := range claims {
-		fmt.Printf("Claim %s at (%d, %d)(%d, %d) %dx%d\n", claim.ClaimID, claim.Rect.Top, claim.Rect.Right, claim.Rect.Bottom, claim.Rect.Left, claim.Size.Width, claim.Size.Height)
-	}
-}
-
-func parseInput() {
-	lineScanner := bufio.NewScanner(strings.NewReader(input))
-	wait := &sync.WaitGroup{}
-
-	ch := make(chan *Claim, 100)
-	quit := make(chan bool, 1)
-
-	go func() {
-		for {
-			select {
-			case claim := <-ch:
-				claims = append(claims, claim)
-				wait.Done()
-
-			case <-quit:
-				return
-			}
-		}
-	}()
+	claims := make(ClaimCollection, 0, 100)
+	var left *Claim
+	var right *Claim
+	var ok bool
 
 	/*
-	 * Parse all claims
+	 * Parse claims input
 	 */
+	lineScanner := bufio.NewScanner(strings.NewReader(input))
+	lineString := ""
+
 	for lineScanner.Scan() {
-		wait.Add(1)
-		lineString := lineScanner.Text()
+		lineString = lineScanner.Text()
 
 		newClaim := &Claim{
 			ClaimID: parseClaimID(lineString),
@@ -1390,12 +1358,57 @@ func parseInput() {
 		newClaim.Rect.Right = newClaim.Rect.Left + newClaim.Size.Width
 		newClaim.Rect.Bottom = newClaim.Rect.Top + newClaim.Size.Height
 
-		ch <- newClaim
+		claims = append(claims, newClaim)
 	}
 
-	wait.Wait()
-	close(ch)
-	quit <- true
+	/*
+	 * Determine which overlap and calculate total square inches for
+	 * all claims that have overlap
+	 */
+	overlappingClaimIDs := make(map[string]bool)
+	squareInchesOverlapping := 0
+
+	fmt.Printf("\n\n")
+
+	for outer := 0; outer < len(claims)-2; outer++ {
+		for inner := outer + 1; inner <= len(claims)-1; inner++ {
+			if claims[outer].Rect.Top <= claims[inner].Rect.Top && claims[outer].Rect.Left <= claims[inner].Rect.Left {
+				left = claims[outer]
+				right = claims[inner]
+			} else {
+				left = claims[inner]
+				right = claims[outer]
+			}
+
+			fmt.Printf("Comparing claim %s to %s\n", left.ClaimID, right.ClaimID)
+
+			if left.Rect.Right >= right.Rect.Left && left.Rect.Right <= right.Rect.Right && left.Rect.Bottom >= right.Rect.Top && left.Rect.Bottom <= right.Rect.Bottom {
+				fmt.Printf("Overlap confirmed\n")
+				fmt.Printf("Left claim - Left: %d, Top: %d, Right: %d, Bottom: %d\n", left.Rect.Left, left.Rect.Top, left.Rect.Right, left.Rect.Bottom)
+				fmt.Printf("Right claim - Left: %d, Top: %d, Right: %d, Bottom: %d\n", right.Rect.Left, right.Rect.Top, right.Rect.Right, right.Rect.Bottom)
+
+				if _, ok = overlappingClaimIDs[left.ClaimID]; !ok {
+					overlappingClaimIDs[left.ClaimID] = true
+					squareInchesOverlapping += left.Size.Width * left.Size.Height
+				}
+
+				if _, ok = overlappingClaimIDs[right.ClaimID]; !ok {
+					overlappingClaimIDs[right.ClaimID] = true
+					squareInchesOverlapping += right.Size.Width * right.Size.Height
+				}
+
+				//squareInchesOverlapping += (left.Rect.Right - right.Rect.Left) * (left.Rect.Bottom - right.Rect.Top)
+				fmt.Printf("Overlapping square inches: %d\n", squareInchesOverlapping)
+				//os.Exit(0)
+			}
+		}
+	}
+
+	for claimID := range overlappingClaimIDs {
+		fmt.Printf("Claim with an overlap: %s\n", claimID)
+	}
+
+	fmt.Printf("\nTotal square inches with overlapping claims: %d\n\n", squareInchesOverlapping)
 }
 
 func parseClaimID(lineString string) string {
